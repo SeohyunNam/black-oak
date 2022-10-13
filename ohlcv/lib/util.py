@@ -1,10 +1,13 @@
 from datetime import datetime
+from distutils.debug import DEBUG
 import pandas as pd
 import pytz
 import random
 import string
 from typing import List
-
+import logging
+import re
+import os
 
 def detect_resolution(d1: datetime, d2: datetime) -> int:
     """ Detects the time difference in milliseconds between two datetimes in ms
@@ -127,3 +130,80 @@ def percentage(part: int, whole: int) -> float:
     :return: percentage of the whole and the part
     """
     return round(100 * float(part) / float(whole), 2)
+
+def extract_units(fetch_log):
+    units = set()
+    while True:
+        line = fetch_log.readline()
+        if line.startswith("[INFO] Started to"):
+            pass
+        else:
+            break
+        p = re.compile("[A-Z0-9]+/([A-Z0-9]+)")
+        patterns =p.search(line)
+        unit = patterns.groups()[0]
+        units.add(unit)
+    return units
+
+
+def extract_repair_log(target):
+    log_data=target.readlines()
+    log_list = []
+    for i in range(len(log_data)):
+        if '\n' == log_data[i]:
+            pass
+        if 'Loading' in log_data[i]:
+            log_list.append(''.join(log_data[i:i+7]))
+
+    log_dict = dict()
+    for log in log_list:
+        key=log.split('\n')[0].split("/")[1].split("_")[1]
+        log_dict[key] = log[:-1]
+    return log_dict
+
+def write_toml(symbol, since,until):
+
+    toml_str="""[settings]
+
+    debug = false
+    persistence = "file"
+    append_file = true
+    proxies = [
+        ""
+    ]
+    ratelimit = true
+
+    [exchanges]
+
+        [exchanges.binance]
+        filter_symbols = ["{0}"]
+        filter_resolutions = ["1h"]
+        since = "{1}"
+        until = "{2}"
+        limit = 365""".format(symbol, since, until)
+    path = "toml/"
+    file = "{}+{}.toml".format(symbol.replace('/',''),since).replace(' ','_')
+
+    with open(path+file, "w") as f:
+        f.write(toml_str)
+    return path+file
+    
+def make_symbol_format(symbolwo,units):
+    for unit in units:
+        if symbolwo.endswith(unit):
+            return "%s/%s"%(symbolwo[:-len(unit)],unit)
+    return
+
+# def make_logger(logger,debug,log):
+
+#     formatter = logging.Formatter(fmt='[%(levelname)s] %(message)s')
+#     stream_handler = logging.StreamHandler()
+#     stream_handler.setLevel(logging.INFO if not debug else logging.DEBUG)
+#     stream_handler.setFormatter(formatter)
+#     logger.addHandler(stream_handler)
+
+#     if log:
+#         file_handler = logging.FileHandler(filename=log)
+#         file_handler.setLevel(logging.DEBUG)
+#         file_handler.setFormatter(formatter)
+#         logger.addHandler(file_handler)

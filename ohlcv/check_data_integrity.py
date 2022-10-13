@@ -4,7 +4,7 @@ import glob
 import numpy as np
 from lib import util, io
 from os import path as p
-from pandas.io.common import EmptyDataError
+from pandas.errors import EmptyDataError
 import logging
 import sys
 
@@ -132,7 +132,11 @@ def data_integrity_test(path, delimiter, resolution, write_headers, na_value, wr
         if write_file:
             # set file to output file if set
             if new_file:
-                file = file + '_REPAIRED'
+                try:
+                    file_name, file_extension = file.split(".")
+                    file = file_name + '_REPAIRED.' + file_extension
+                except:
+                    file = file + '_REPAIRED'
 
             io.write_csv(
                 file=file,
